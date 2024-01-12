@@ -1,0 +1,43 @@
+---
+- name: Install Nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: true
+
+- name: Start Nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Install Git
+  ansible.builtin.apt:
+    name: git
+    state: present
+
+- name: Clone Lighthouse repository from GitHub
+  ansible.builtin.git:
+    repo: "{{ lighthouse_vcs }}"
+    version: master
+    dest: "{{ lighthouse_location_dir }}"
+
+- name: Add Nginx configuration file for lighthouse site
+  ansible.builtin.template:
+    src: templates/nginx-lighthouse.conf.j2
+    dest: /etc/nginx/sites-available/default
+    mode: "0644"
+- name: Enable Nginx site configuration
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    state: link
+
+- name: Validate Nginx configuration
+  ansible.builtin.command: nginx -t
+  register: result
+  changed_when: false
+  failed_when: result.rc != 0
+
+- name: Trigger Nginx reload
+  ansible.builtin.meta: flush_handlers
